@@ -1,0 +1,9 @@
+name: retailsync
+version: '1.0.0'
+config-version: 2
+profile: retailsync
+model-paths: ["models"]
+models:
+  retailsync:
+    staging: {+materialized: view}
+    marts: {+materialized: table}

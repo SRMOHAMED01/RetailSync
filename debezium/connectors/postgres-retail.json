@@ -1,0 +1,17 @@
+{
+  "name": "retailsync-postgres",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "retail",
+    "database.password": "retail_dev_password",
+    "database.dbname": "retailsync",
+    "topic.prefix": "retail",
+    "plugin.name": "pgoutput",
+    "slot.name": "retailsync_slot",
+    "publication.autocreate.mode": "filtered",
+    "table.include.list": "public.customers,public.products,public.orders,public.order_items,public.payments",
+    "snapshot.mode": "initial"
+  }
+}
