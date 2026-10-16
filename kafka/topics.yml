@@ -1,0 +1,64 @@
+# Kafka topic configuration for RetailSync.
+
+# CDC topics (source of truth = Debezium connector, auto-created).
+# These are the defaults applied by the connector; override per environment
+# via the connector config or explicit topic creation.
+
+retail.public.customers:
+  partitions: 4
+  replication_factor: 1            # 3 in production (multi-broker)
+  retention_ms: 604800000          # 7 days
+  min.insync.replicas: 1           # 2 in production
+  cleanup.policy: delete
+
+retail.public.products:
+  partitions: 4
+  replication_factor: 1
+  retention_ms: 604800000
+  min.insync.replicas: 1
+  cleanup.policy: delete
+
+retail.public.orders:
+  partitions: 8                     # higher churn; key by customer_id
+  replication_factor: 1
+  retention_ms: 604800000
+  min.insync.replicas: 1
+  cleanup.policy: delete
+
+retail.public.order_items:
+  partitions: 8
+  replication_factor: 1
+  retention_ms: 604800000
+  min.insync.replicas: 1
+  cleanup.policy: delete
+
+retail.public.payments:
+  partitions: 4
+  replication_factor: 1
+  retention_ms: 604800000
+  min.insync.replicas: 1
+  cleanup.policy: delete
+
+# Kafka Connect internal topics (compact, long retention).
+retailsync_connect_configs:
+  partitions: 1
+  replication_factor: 1
+  cleanup.policy: compact
+
+retailsync_connect_offsets:
+  partitions: 25
+  replication_factor: 1
+  cleanup.policy: compact
+
+retailsync_connect_statuses:
+  partitions: 5
+  replication_factor: 1
+  cleanup.policy: compact
+
+# Notes
+# - `retention_ms` >= the Bronze replay window so Kafka can serve as the
+#   source-of-truth backfill if Bronze is rebuilt.
+# - Partition counts are a starting point; scale with throughput and consumer
+#   parallelism (Spark Structured Streaming partitions = Kafka partitions).
+# - In production set `replication_factor` and `min.insync.replicas` >= 2 so
+#   a broker loss does not lose data.

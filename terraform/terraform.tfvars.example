@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars and fill in your values. Never commit real secrets.
+
+environment            = "prod"
+databricks_host        = "https://your-workspace.cloud.databricks.com"
+databricks_token       = ""          # set via TF_VAR_databricks_token env var
+databricks_cluster_size = "Medium"
+
+kafka_broker             = "kafka.prod.retailsync.internal:9093"
+kafka_security_protocol  = "SASL_SSL"
+kafka_sasl_username      = ""        # set via TF_VAR_kafka_sasl_username
+kafka_sasl_password      = ""        # set via TF_VAR_kafka_sasl_password
+kafka_replication_factor = 2
+
+kafka_retention_ms       = 604800000
+kafka_partitions_orders  = 8
+kafka_partitions_default = 4
