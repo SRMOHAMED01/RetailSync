@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: retailsync
+    description: "Raw CDC events persisted by the Bronze streaming layer (append-only Delta)."
+    schema: retailsync
+    tables:
+      - name: bronze_customers_cdc
+        description: "Raw Debezium envelope for customers (topic, partition, offset, payload)."
+      - name: bronze_products_cdc
+        description: "Raw Debezium envelope for products."
+      - name: bronze_orders_cdc
+        description: "Raw Debezium envelope for orders."
+      - name: bronze_order_items_cdc
+        description: "Raw Debezium envelope for order_items."
+      - name: bronze_payments_cdc
+        description: "Raw Debezium envelope for payments."
+
+  - name: retailsync_silver
+    description: "Current business state after idempotent CDC MERGE (Silver layer)."
+    schema: retailsync
+    tables:
+      - name: customers
+        description: "Current customer state (INSERT/UPDATE/DELETE reconciled)."
+      - name: products
+        description: "Current product state."
+      - name: orders
+        description: "Current order state."
+      - name: order_items
+        description: "Current order_item state."
+      - name: payments
+        description: "Current payment state."

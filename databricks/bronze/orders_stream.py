@@ -1,11 +1,22 @@
-# Databricks starter — adapter bootstrap servers/catalog/checkpoint à votre environnement.
-from pyspark.sql import functions as F
-KAFKA_BOOTSTRAP_SERVERS = "CHANGE_ME:9092"
-TOPIC = "retail.public.orders"
-BRONZE_TABLE = "retailsync.bronze.orders_cdc"
-CHECKPOINT = "/Volumes/retailsync/checkpoints/bronze_orders"
-raw = (spark.readStream.format("kafka")
-       .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
-       .option("subscribe", TOPIC).option("startingOffsets", "earliest").load())
-bronze = raw.select(F.col("key").cast("string").alias("event_key"),F.col("value").cast("string").alias("payload"),"topic","partition","offset",F.col("timestamp").alias("kafka_timestamp"),F.current_timestamp().alias("ingested_at"))
-(bronze.writeStream.format("delta").option("checkpointLocation", CHECKPOINT).outputMode("append").toTable(BRONZE_TABLE))
+# Databricks notebook — Bronze streaming for `orders`.
+#
+# Prereqs:
+#   1. A Databricks workspace + cluster with Delta + Kafka support.
+#   2. `common/` on the notebook search path (or paste cdc_bronze.py above this cell).
+#   3. KAFKA_BOOTSTRAP_SERVERS set to a broker reachable from your compute
+#      (see docs/runbooks/DATABRICKS.md — a local `localhost:9092` is not
+#      reachable from a cloud workspace).
+#   4. Catalog/schema `retailsync.bronze` and checkpoint volume exist.
+#
+# Run this cell to start the stream; it appends raw CDC + Kafka metadata to
+# `retailsync.bronze.orders_cdc` (immutable/replayable, see ARCHITECTURE.md).
+import sys
+sys.path.append("/Volumes/retailsync/checkpoints")
+sys.path.append("dbfs:/databricks/common")  # adjust to your import path
+
+from cdc_bronze import start_bronze_stream, BRONZE_SOURCES
+
+source = next(s for s in BRONZE_SOURCES if s["topic"] == "retail.public.orders")
+q = start_bronze_stream(spark, source)
+print(f"Started bronze stream for {source['topic']} -> {source['table']}")
+print(q.status)

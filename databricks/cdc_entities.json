@@ -1,0 +1,67 @@
+{
+  "customers": {
+    "bronze": "retailsync.bronze.customers_cdc",
+    "silver": "retailsync.silver.customers",
+    "key": "customer_id",
+    "after": [
+      {"name": "customer_id", "type": "long"},
+      {"name": "first_name", "type": "string"},
+      {"name": "last_name", "type": "string"},
+      {"name": "email", "type": "string"},
+      {"name": "city", "type": "string"},
+      {"name": "created_at", "type": "timestamp"},
+      {"name": "updated_at", "type": "timestamp"}
+    ]
+  },
+  "products": {
+    "bronze": "retailsync.bronze.products_cdc",
+    "silver": "retailsync.silver.products",
+    "key": "product_id",
+    "after": [
+      {"name": "product_id", "type": "long"},
+      {"name": "name", "type": "string"},
+      {"name": "category", "type": "string"},
+      {"name": "price", "type": "decimal(12,2)"},
+      {"name": "stock", "type": "int"},
+      {"name": "updated_at", "type": "timestamp"}
+    ]
+  },
+  "orders": {
+    "bronze": "retailsync.bronze.orders_cdc",
+    "silver": "retailsync.silver.orders",
+    "key": "order_id",
+    "after": [
+      {"name": "order_id", "type": "long"},
+      {"name": "customer_id", "type": "long"},
+      {"name": "status", "type": "string"},
+      {"name": "total_amount", "type": "decimal(12,2)"},
+      {"name": "created_at", "type": "timestamp"},
+      {"name": "updated_at", "type": "timestamp"}
+    ]
+  },
+  "order_items": {
+    "bronze": "retailsync.bronze.order_items_cdc",
+    "silver": "retailsync.silver.order_items",
+    "key": "order_item_id",
+    "after": [
+      {"name": "order_item_id", "type": "long"},
+      {"name": "order_id", "type": "long"},
+      {"name": "product_id", "type": "long"},
+      {"name": "quantity", "type": "int"},
+      {"name": "unit_price", "type": "decimal(12,2)"}
+    ]
+  },
+  "payments": {
+    "bronze": "retailsync.bronze.payments_cdc",
+    "silver": "retailsync.silver.payments",
+    "key": "payment_id",
+    "after": [
+      {"name": "payment_id", "type": "long"},
+      {"name": "order_id", "type": "long"},
+      {"name": "amount", "type": "decimal(12,2)"},
+      {"name": "payment_method", "type": "string"},
+      {"name": "status", "type": "string"},
+      {"name": "created_at", "type": "timestamp"}
+    ]
+  }
+}

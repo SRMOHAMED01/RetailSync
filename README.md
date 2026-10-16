@@ -13,6 +13,12 @@ RetailSync est un projet portfolio Data Engineering : PostgreSQL → Debezium/Ka
 8. Configurer dbt selon `dbt/README.md`, puis construire les modèles Gold.
 9. Connecter Power BI au Databricks SQL Warehouse et créer le dashboard décrit dans `powerbi/README.md`.
 
+## Tests
+- Unitaires: `python -m pytest tests/unit -q` (7 tests, sans Spark)
+- Intégration: `python -m pytest tests/integration -q` (Postgres -> Debezium -> Kafka)
+- E2E: `python -m pytest tests/e2e -q` (DoD infra: topics, connector, INSERT/UPDATE/DELETE)
+- CI: `.github/workflows/tests.yml` (lint ruff + unit + integration + e2e)
+
 ## Objectif pédagogique
 - CDC PostgreSQL via WAL/logical replication
 - Debezium et Kafka Connect

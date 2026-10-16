@@ -1,10 +1,72 @@
 name: basic-checks
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
 jobs:
-  checks:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python -m py_compile simulator/src/main.py
+      - run: pip install ruff
+      - run: ruff check simulator databricks dbt tests
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements-test.txt
+      - run: python -m pytest tests/unit -q
+
+  # Integration + e2e require the full Docker stack (postgres, kafka, connect,
+  # simulator). They run only when Docker is available (GitHub-hosted runners
+  # include it). See docs/runbooks for how to run them locally.
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Start local stack
+        run: docker compose up -d postgres kafka connect
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8083/ && break
+            sleep 2
+          done
+      - name: Register Debezium connector
+        run: |
+          curl -fsS -X POST http://localhost:8083/connectors \
+            -H 'Content-Type: application/json' \
+            --data @debezium/connectors/postgres-retail.json || true
+      - run: pip install -r requirements-test.txt
+      - run: python -m pytest tests/integration -q
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Start local stack
+        run: docker compose up -d postgres kafka connect
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8083/ && break
+            sleep 2
+          done
+      - name: Register Debezium connector
+        run: |
+          curl -fsS -X POST http://localhost:8083/connectors \
+            -H 'Content-Type: application/json' \
+            --data @debezium/connectors/postgres-retail.json || true
+      - run: pip install -r requirements-test.txt
+      - run: python -m pytest tests/e2e -q

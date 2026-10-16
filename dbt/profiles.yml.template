@@ -1,0 +1,12 @@
+# Copy this file to `~/.dbt/profiles.yml` (or CI secret) and fill in your
+# Databricks credentials. NEVER commit this file — see .gitignore.
+retailsync:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      host: https://your-workspace.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/<WAREHOUSE_ID>
+      schema: retailsync
+      threads: 4
+      token: "{{ env_var('DBT_DATABRICKS_TOKEN') }}"
