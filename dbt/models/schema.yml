@@ -54,3 +54,15 @@ models:
         tests: [not_null]
       - name: total_amount
         tests: [not_null]
+
+  - name: daily_sales
+    description: "Daily sales rollup: orders, revenue, average basket per sales_date."
+    columns:
+      - name: sales_date
+        tests: [not_null]
+      - name: orders_count
+        tests: [not_null]
+      - name: revenue
+        tests: [not_null]
+      - name: avg_order_value
+        tests: [not_null]
