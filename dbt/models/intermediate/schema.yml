@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: int_customers
+    description: "Cleaned customer entity with derived full_name and lowercased email."
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+      - name: email
+        tests: [not_null, unique]
+
+  - name: int_products
+    description: "Cleaned product entity with derived price_cents."
+    columns:
+      - name: product_id
+        tests: [not_null, unique]
+      - name: name
+        tests: [not_null]
+      - name: price
+        tests: [not_null]
+
+  - name: int_orders
+    description: "Cleaned order entity with derived date/year/month and amount_cents."
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests: [not_null]
+      - name: total_amount
+        tests: [not_null]
+      - name: order_date
+        tests: [not_null]
+
+  - name: int_order_items
+    description: "Cleaned order_item entity with derived line_total."
+    columns:
+      - name: order_item_id
+        tests: [not_null, unique]
+      - name: order_id
+        tests: [not_null]
+      - name: product_id
+        tests: [not_null]
+      - name: line_total
+        tests: [not_null]
+
+  - name: int_payments
+    description: "Cleaned payment entity with derived amount_cents and payment month."
+    columns:
+      - name: payment_id
+        tests: [not_null, unique]
+      - name: order_id
+        tests: [not_null]
+      - name: amount
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['PENDING', 'PAID', 'FAILED', 'REFUNDED']

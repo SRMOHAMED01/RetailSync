@@ -1,17 +1,25 @@
 -- Databricks SQL / dbt Gold — analytics views for Power BI.
--- These are the marts Power BI should consume (see powerbi/README.md).
--- They are thin wrappers over the dbt Gold models so Power BI can query them
--- directly from the Databricks SQL Warehouse without needing dbt access.
+-- These are thin wrappers over the dbt Gold models so Power BI can query them
+-- directly from the Databricks SQL Warehouse.
+--
+-- The underlying dbt marts live in the `retailsync` schema:
+--   retailsync.fact_sales     (one row per order_item)
+--   retailsync.fact_orders    (one row per order)
+--   retailsync.dim_customer
+--   retailsync.dim_product
+--   retailsync.dim_date
+--
+-- Run `dbt build` (see dbt/README.md) to materialize the marts, then
+-- refresh these views so Power BI always sees current data.
 
 -- 1) Executive Overview: revenue, orders, average basket, trend
 CREATE OR REPLACE VIEW retailsync.gold.daily_sales_bi AS
 select
-    cast(ingested_at as date) as sales_date,
-    count(distinct order_id) as orders_count,
-    sum(total_amount) as revenue,
-    avg(total_amount) as avg_order_value
-from retailsync.silver.orders
-where status in ('PAID', 'SHIPPED', 'DELIVERED')
+    sales_date,
+    count(*) as orders_count,
+    sum(line_total) as revenue,
+    avg(line_total) as avg_order_value
+from retailsync.fact_sales
 group by 1;
 
 -- 2) Product Analytics: revenue by product
@@ -20,10 +28,10 @@ select
     p.product_id,
     p.name as product_name,
     p.category,
-    sum(oi.quantity) as units_sold,
-    sum(oi.quantity * oi.unit_price) as revenue
-from retailsync.silver.order_items oi
-join retailsync.silver.products p on p.product_id = oi.product_id
+    sum(fs.quantity) as units_sold,
+    sum(fs.line_total) as revenue
+from retailsync.fact_sales fs
+join retailsync.dim_product p on p.product_id = fs.product_id
 group by 1, 2, 3;
 
 -- 3) Customer 360: per-customer spend + order count
@@ -33,9 +41,9 @@ select
     c.first_name,
     c.last_name,
     c.city,
-    count(o.order_id) as orders_count,
-    coalesce(sum(o.total_amount), 0) as lifetime_spend,
-    coalesce(avg(o.total_amount), 0) as avg_basket
-from retailsync.silver.customers c
-left join retailsync.silver.orders o on o.customer_id = c.customer_id
+    count(distinct fs.order_id) as orders_count,
+    coalesce(sum(fs.line_total), 0) as lifetime_spend,
+    coalesce(avg(fs.line_total), 0) as avg_basket
+from retailsync.dim_customer c
+left join retailsync.fact_sales fs on fs.customer_id = c.customer_id
 group by 1, 2, 3, 4;

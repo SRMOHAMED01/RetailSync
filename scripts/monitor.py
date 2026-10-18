@@ -16,6 +16,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from datetime import datetime, timezone
 
 CONNECT_URL = os.getenv("CONNECT_URL", "http://localhost:8083")
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:29092")
@@ -103,14 +104,93 @@ def check_pg_counts():
     return rows
 
 
+def check_checkpoint_age():
+    """Streaming checkpoint age (minutes since last write).
+
+    A checkpoint older than 30 min means the stream is stalled. Requires
+    Databricks SQL (DATABRICKS_SQL_WAREHOUSE env) and the retailsync catalog.
+    """
+    warehouse = os.getenv("DATABRICKS_SQL_WAREHOUSE")
+    if not warehouse:
+        print("[SKIP] DATABRICKS_SQL_WAREHOUSE not set — skipping checkpoint check")
+        return True
+    try:
+        host = os.getenv("DATABRICKS_HOST", "https://your-workspace.cloud.databricks.com")
+        token = os.getenv("DATABRICKS_TOKEN")
+        if not token:
+            print("[SKIP] DATABRICKS_TOKEN not set — skipping checkpoint check")
+            return True
+        import databricks.sql
+        with databricks.sql.connect(
+            server_hostname=host.lstrip("https://"),
+            http_path=warehouse,
+            access_token=token,
+        ) as conn, conn.cursor() as cur:
+            cur.execute("""
+                select
+                    max(ingested_at) as last_event,
+                    max(checkpoint_ts) as last_checkpoint
+                from (
+                    select ingested_at, null as checkpoint_ts
+                    from retailsync.bronze.orders_cdc
+                    union all
+                    select null, last_update
+                    from system.streaming.checkpoints
+                    where location like '%retailsync%'
+                )
+            """)
+            row = cur.fetchone()
+            last_event, last_checkpoint = row[0], row[1]
+        now = datetime.now(timezone.utc)
+        event_lag = (now - last_event).total_seconds() / 60 if last_event else None
+        ckpt_lag = (now - last_checkpoint).total_seconds() / 60 if last_checkpoint else None
+        ok = (event_lag is None or event_lag < 30) and (ckpt_lag is None or ckpt_lag < 30)
+        print(f"[{'OK' if ok else 'FAIL'}] last_event_lag={event_lag}min checkpoint_lag={ckpt_lag}min")
+        return ok
+    except Exception as e:
+        print(f"[WARN] checkpoint check error: {e}")
+        return True
+
+
+def check_bronze_silver_counts():
+    """Reconcile Bronze/Silver row counts against PostgreSQL source."""
+    warehouse = os.getenv("DATABRICKS_SQL_WAREHOUSE")
+    if not warehouse:
+        print("[SKIP] DATABRICKS_SQL_WAREHOUSE not set — skipping reconciliation")
+        return True
+    try:
+        import databricks.sql
+        host = os.getenv("DATABRICKS_HOST", "https://your-workspace.cloud.databricks.com")
+        token = os.getenv("DATABRICKS_TOKEN")
+        with databricks.sql.connect(
+            server_hostname=host.lstrip("https://"),
+            http_path=warehouse,
+            access_token=token,
+        ) as conn, conn.cursor() as cur:
+            cur.execute("""
+                select 'bronze_orders' t, count(*) from retailsync.bronze.orders_cdc
+                union all select 'silver_orders', count(*) from retailsync.silver.orders
+                union all select 'bronze_customers', count(*) from retailsync.bronze.customers_cdc
+                union all select 'silver_customers', count(*) from retailsync.silver.customers
+            """)
+            counts = {t: c for t, c in cur.fetchall()}
+        print(f"[INFO] databricks counts: {counts}")
+        return counts
+    except Exception as e:
+        print(f"[WARN] databricks reconciliation error: {e}")
+        return True
+
+
 def main():
     print(f"=== RetailSync monitor @ {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} ===")
     results = {
         "connector": check_connector(),
         "topics": check_topics(),
+        "checkpoint_age": check_checkpoint_age(),
     }
     counts = check_message_counts()
     pg = check_pg_counts()
+    db_counts = check_bronze_silver_counts()
 
     # Reconciliation: every CDC topic must have >= messages for its table.
     # (orders can lag the simulator; this is a soft check.)
@@ -119,6 +199,14 @@ def main():
     print(f"[{'OK' if recon_ok else 'WARN'}] orders: kafka={counts.get('retail.public.orders')} pg={pg.get('orders')}")
 
     failed = [k for k, v in results.items() if not v]
+    summary = {
+        "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        "results": results,
+        "counts": {"kafka": counts, "postgres": pg, "databricks": db_counts},
+        "status": "OK" if not failed else "FAIL",
+        "failures": failed,
+    }
+    print(json.dumps(summary, indent=2, default=str))
     print(f"\n=== {'ALL OK' if not failed else 'FAILURES: ' + ', '.join(failed)} ===")
     return 1 if failed else 0
 

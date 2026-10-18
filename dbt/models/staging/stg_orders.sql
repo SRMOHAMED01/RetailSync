@@ -5,5 +5,6 @@ select
     customer_id,
     status,
     total_amount,
-    ingested_at
+    created_at,
+    updated_at
 from {{ source('retailsync_silver', 'orders') }}

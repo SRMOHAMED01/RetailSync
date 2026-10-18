@@ -1,0 +1,79 @@
+{
+  "name": "RetailSync Executive Dashboard",
+  "description": "Real-time retail analytics: revenue, products, customers. Data source: Databricks SQL Warehouse (retailsync.gold.*).",
+  "version": "1.0",
+  "source": {
+    "type": "databricks",
+    "host": "https://your-workspace.cloud.databricks.com",
+    "http_path": "/sql/1.0/warehouses/<WAREHOUSE_ID>",
+    "catalog": "retailsync",
+    "schemas": ["gold"]
+  },
+  "views": [
+    {
+      "name": "executive_overview",
+      "title": "Executive Overview",
+      "query": "SELECT sales_date, orders_count, revenue, avg_order_value FROM retailsync.gold.daily_sales_bi ORDER BY sales_date",
+      "visuals": [
+        {
+          "type": "line",
+          "title": "Daily Revenue",
+          "xAxis": "sales_date",
+          "yAxis": "revenue"
+        },
+        {
+          "type": "line",
+          "title": "Orders Count",
+          "xAxis": "sales_date",
+          "yAxis": "orders_count"
+        },
+        {
+          "type": "card",
+          "title": "Average Order Value",
+          "value": "avg_order_value"
+        }
+      ]
+    },
+    {
+      "name": "product_analytics",
+      "title": "Product Analytics",
+      "query": "SELECT product_name, category, units_sold, revenue FROM retailsync.gold.product_sales_bi ORDER BY revenue DESC",
+      "visuals": [
+        {
+          "type": "bar",
+          "title": "Revenue by Product",
+          "xAxis": "product_name",
+          "yAxis": "revenue"
+        },
+        {
+          "type": "bar",
+          "title": "Units Sold by Product",
+          "xAxis": "product_name",
+          "yAxis": "units_sold"
+        }
+      ]
+    },
+    {
+      "name": "customer_360",
+      "title": "Customer 360",
+      "query": "SELECT first_name, last_name, city, orders_count, lifetime_spend, avg_basket FROM retailsync.gold.customer_360_bi ORDER BY lifetime_spend DESC",
+      "visuals": [
+        {
+          "type": "bar",
+          "title": "Top Customers by Lifetime Spend",
+          "xAxis": "first_name",
+          "yAxis": "lifetime_spend"
+        },
+        {
+          "type": "table",
+          "title": "Customer Details",
+          "columns": ["first_name", "last_name", "city", "orders_count", "lifetime_spend", "avg_basket"]
+        }
+      ]
+    }
+  ],
+  "refresh": {
+    "schedule": "every 1 hour",
+    "method": "scheduled refresh via Databricks SQL Warehouse"
+  }
+}

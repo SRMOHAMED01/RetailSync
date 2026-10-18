@@ -1,14 +1,15 @@
 {{ config(materialized='table') }}
 
 -- Dimension: date spine derived from order activity (Silver).
+-- Uses order created_at (business time), NOT ingested_at (stream ingestion time).
 with orders as (
-    select ingested_at from {{ source('retailsync_silver', 'orders') }}
+    select created_at from {{ source('retailsync_silver', 'orders') }}
 ),
 
 bounds as (
     select
-        min(date(ingested_at)) as min_date,
-        max(date(ingested_at)) as max_date
+        min(date(created_at)) as min_date,
+        max(date(created_at)) as max_date
     from orders
 ),
 

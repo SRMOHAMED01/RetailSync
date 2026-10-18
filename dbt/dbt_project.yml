@@ -6,4 +6,5 @@ model-paths: ["models"]
 models:
   retailsync:
     staging: {+materialized: view}
+    intermediate: {+materialized: ephemeral}
     marts: {+materialized: table}
