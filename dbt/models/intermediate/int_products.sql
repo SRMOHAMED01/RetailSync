@@ -1,11 +1,12 @@
 -- Intermediate: cleaned product entity.
--- Adds a derived unit_price_cents column for consistent money math.
+-- Adds a derived category_upper for case-insensitive grouping and keeps the
+-- raw price for downstream money math.
 select
     product_id,
     name,
     category,
+    upper(category) as category_upper,
     price,
-    cast(price * 100 as long) as price_cents,
     stock,
     updated_at
 from {{ ref('stg_products') }}
